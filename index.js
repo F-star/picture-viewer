@@ -24,9 +24,8 @@ Stage.prototype = {
         ratio: this.size().ratio
       }
     }
-
+    console.log('图片自适应窗口')
     const imgRatio = this.picture.getRatio();
-    console.log('自适应')
 
     if (imgRatio > box.ratio) {
       // 图片高设置为 stage 高
@@ -94,7 +93,6 @@ Stage.prototype = {
     });
     window.addEventListener('mouseup', () => {
       state = 'init';
-      console.log('释放')
     });
   },
   scaleImg(scale) {
