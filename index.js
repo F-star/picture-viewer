@@ -8,16 +8,37 @@ Stage.prototype = {
   initImage(imgUrl, width, height) {
     // 创建一张图片
     this.picture = new Picture(imgUrl, width, height);
-    this.el.appendChild(this.picture.el);
-    this.scaleImg(0.5);
+    this.picture.loaded(() => {
+      this.el.appendChild(this.picture.el);
+      // this.scaleImg(0.5);
+      this.autofixPic()
+    })
+    
   },
   // 【未完成】让图片刚好填充舞台
-  autofixPic() {
-    let imgRatio = this.picture.getRatio();
-    let stageRatio = this.size().ratio;
-    if (stageRatio < imgRatio ) {
-      // y 轴方向为基准
-      
+  autofixPic(box) {
+    if (!box) {
+      box = {
+        x: 0,
+        y: 0,
+        width: this.size().width,
+        height: this.size().height,
+        ratio: this.size().ratio
+      }
+    }
+
+    const imgRatio = this.picture.getRatio();
+    console.log('自适应')
+
+    if (imgRatio > box.ratio) {
+      // 图片高设置为 stage 高。
+      const scale = box.width / this.picture.getWidth();
+      // this.picture.setSize(, box.width);
+      this.scaleImg(scale)
+    } else {
+      // x
+      const scale = box.height / this.picture.getHeight();
+      this.scaleImg(scale)
     }
     
   },
@@ -93,7 +114,8 @@ Stage.prototype = {
     this.picture.setPostion(x, y); 
   },
   rotateImg(angle) {
-    this.picture.rotate(angle)
+    this.picture.rotate(angle);
+    this.autofixPic();
   },
   // 图片的 x， y 修正（尤其是缩小后，可能导致图片宽高大于 stage 的情况下，和stage之间仍有空白
   fixImgPos(box) {
@@ -129,8 +151,142 @@ Stage.prototype = {
   }
 }
 
-// 图片对象
+// 图片对象 (canvas 实现)
 function Picture(imgUrl, width, height) {
+  const img = new Image();
+  this.el = document.createElement('canvas');
+  this.canvasCtx = this.el.getContext('2d');
+  this.img = img;
+  this.loadedHandler = [];
+  this.angle = 0;
+
+  img.src = imgUrl;
+  img.onload = () => {
+    console.log('图片加载完毕')
+    this.el.width = img.width;
+    this.el.height = img.height;
+    this.canvasCtx.drawImage(img, 0, 0, img.width, img.height);
+
+    if (width == undefined) {
+      width = img.width;
+      height = img.height;
+    }
+    this.setSize(width, height);
+    this.setPostion(0, 0);
+    
+    this.loadedHandler.forEach(handler => handler());
+  }
+  // if (width == undefined) {
+  //   width = img.width;
+  //   height = img.height;
+  // }
+  // this.setSize(width, height);
+  // this.setPostion(0, 0);
+}
+Picture.prototype = {
+  loaded(cb) {
+    this.loadedHandler.push(cb);
+  },
+  // 尺寸相关方法
+  getWidth() {
+    const width = parseFloat(this.el.style.width);
+    return width;
+  },
+  getHeight() {
+    const height = parseFloat(this.el.style.height);
+    return height;
+  },
+  getRatio() {
+    return this.getWidth() / this.getHeight();
+  },
+  setSize(width, height) {
+    this.el.style.width = width + 'px';
+    this.el.style.height = height + 'px';
+    // this.canvasCtx.drawImage(this.img, 0, 0, width, height)
+  },
+  // 缩放后
+  boxAfterScale(scale, cx, cy) {
+    if (cx == undefined) {
+      cx = this.x() + this.getWidth() / 2;
+      cy = this.y() + this.getHeight() / 2;
+    }
+    let width = this.getWidth();
+    width *= scale;
+    let height = this.getHeight();
+    height *= scale;
+
+    const x = cx - scale * (cx - this.x());
+    const y = cy - scale * (cy - this.y());
+    
+    return {
+      x, y, width, height
+    };
+  },
+  scale(scale, cx, cy) {
+    if (cx == undefined) {
+      cx = this.x() + this.getWidth() / 2;
+      cy = this.y() + this.getHeight() / 2;
+    }
+    let width = this.getWidth();
+    width *= scale;
+    let height = this.getHeight();
+    height *= scale;
+    this.setSize(width, height);
+
+    const new_x = cx - scale * (cx - this.x());
+    const new_y = cy - scale * (cy - this.y());
+    this.setPostion(new_x, new_y);
+  },
+  // 位置相关方法
+  x(val) {
+    if (val == undefined) {
+      const x = parseFloat(this.el.style.left);
+      return x;
+    }
+    this.el.style.left = val + 'px';
+  },
+  y(val) {
+    if (val == undefined) {
+      const y = parseFloat(this.el.style.top); 
+      return y;
+    }
+    this.el.style.top = val + 'px';
+  },
+  setPostion(x, y) {
+    this.x(x);
+    this.y(y);
+  },
+  rotate(angle) {
+    // 旋转这里要修改实现。。
+    // 1. 重新绘制 img 到 canvas 上。
+    this.angle = (this.angle + angle + 360) % 360;
+
+    const img = this.img;
+    // 交换图片宽高
+    this.setSize(this.getHeight(), this.getWidth());
+    [this.el.width, this.el.height] = [this.el.height, this.el.width];
+
+    if (this.angle == 90) {
+      this.canvasCtx.translate(img.height, 0);
+    } else if (this.angle == 180) {
+      this.canvasCtx.translate(img.width, img.height);
+    } else if (this.angle == 270) {
+      this.canvasCtx.translate(0, img.width);
+    }
+
+    this.canvasCtx.rotate(this.angle * Math.PI / 180);
+    this.canvasCtx.drawImage(img, 0, 0, img.width, img.height);
+  },
+  center(cx, cy) {
+    const x = cx - this.getWidth() / 2;
+    const y = cy - this.getHeight() / 2;
+    this.setPostion(x, y);
+  },
+}
+
+
+// 图片对象
+function Picture2(imgUrl, width, height) {
   const img = new Image();
   img.src = imgUrl;
   this.el = img;
@@ -143,7 +299,7 @@ function Picture(imgUrl, width, height) {
   this.setSize(width, height);
   this.setPostion(0, 0);
 }
-Picture.prototype = {
+Picture2.prototype = {
   // 尺寸相关方法
   getWidth() {
     const width = parseFloat(this.el.style.width);
@@ -232,7 +388,7 @@ Picture.prototype = {
 
 const stage = new Stage('#stage');
 stage.size(700, 500);
-stage.initImage('./img/pic.jpg');
+stage.initImage('./img/pic.jpg', 1280, 720)
 stage.enableMove();
 
 document.querySelector('#scale-up').addEventListener('click', function() {
