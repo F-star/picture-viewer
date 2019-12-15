@@ -6,16 +6,14 @@ function Stage(seletor) {
 
 Stage.prototype = {
   initImage(imgUrl, width, height) {
-    // 创建一张图片
     this.picture = new Picture(imgUrl, width, height);
     this.picture.loaded(() => {
       this.el.appendChild(this.picture.el);
-      // this.scaleImg(0.5);
       this.autofixPic()
     })
     
   },
-  // 【未完成】让图片刚好填充舞台
+  // 让图片刚好填充舞台
   autofixPic(box) {
     if (!box) {
       box = {
@@ -31,16 +29,14 @@ Stage.prototype = {
     console.log('自适应')
 
     if (imgRatio > box.ratio) {
-      // 图片高设置为 stage 高。
+      // 图片高设置为 stage 高
       const scale = box.width / this.picture.getWidth();
-      // this.picture.setSize(, box.width);
       this.scaleImg(scale)
     } else {
-      // x
+      // 图片宽设置为 stage 宽。
       const scale = box.height / this.picture.getHeight();
       this.scaleImg(scale)
     }
-    
   },
   width() {
     const width = parseFloat(this.el.style.width);
@@ -71,7 +67,6 @@ Stage.prototype = {
       if (e.target !== this.picture.el) return;
 
       e.preventDefault();
-      console.log('按下')
       state = 'down'
       pic_x = this.picture.x();
       pic_y = this.picture.y();
@@ -80,18 +75,19 @@ Stage.prototype = {
     });
     window.addEventListener('mousemove', e => {
       if (state === 'down') state = 'drag';
-      if (state == 'drag') {
-        console.log('拖拽')
+      if (state === 'drag') {
+        // 拖拽 过程中执行的代码
         const dx = e.pageX - old_x;
         const dy = e.pageY - old_y;
 
-        // 修正位置前，图片的盒模型
+        // 修正 x y 位置前，图片的盒模型
         const predictBox = {
           x: pic_x + dx,
           y: pic_y + dy,
           width: this.picture.getWidth(),
           height: this.picture.getHeight()
         }
+        // 修正 x y 位置
         const {x, y} = this.fixImgPos(predictBox);
         this.picture.setPostion(x, y);
       }
@@ -100,16 +96,10 @@ Stage.prototype = {
       state = 'init';
       console.log('释放')
     });
-    // window.addEventListener('mousewheel', () => {
-
-    // })
   },
   scaleImg(scale) {
-    // 计算缩放后的图片x, y，在必要时进行调整。
     const box = this.picture.boxAfterScale(scale);
-
     this.picture.setSize(box.width, box.height);
-
     const {x, y} = this.fixImgPos(box);
     this.picture.setPostion(x, y); 
   },
@@ -119,7 +109,6 @@ Stage.prototype = {
   },
   // 图片的 x， y 修正（尤其是缩小后，可能导致图片宽高大于 stage 的情况下，和stage之间仍有空白
   fixImgPos(box) {
-   
     const stage_width = this.width();
     const stage_height = this.height(); 
 
@@ -176,18 +165,11 @@ function Picture(imgUrl, width, height) {
     
     this.loadedHandler.forEach(handler => handler());
   }
-  // if (width == undefined) {
-  //   width = img.width;
-  //   height = img.height;
-  // }
-  // this.setSize(width, height);
-  // this.setPostion(0, 0);
 }
 Picture.prototype = {
   loaded(cb) {
     this.loadedHandler.push(cb);
   },
-  // 尺寸相关方法
   getWidth() {
     const width = parseFloat(this.el.style.width);
     return width;
@@ -202,7 +184,6 @@ Picture.prototype = {
   setSize(width, height) {
     this.el.style.width = width + 'px';
     this.el.style.height = height + 'px';
-    // this.canvasCtx.drawImage(this.img, 0, 0, width, height)
   },
   // 缩放后
   boxAfterScale(scale, cx, cy) {
@@ -257,10 +238,8 @@ Picture.prototype = {
     this.y(y);
   },
   rotate(angle) {
-    // 旋转这里要修改实现。。
     // 1. 重新绘制 img 到 canvas 上。
     this.angle = (this.angle + angle + 360) % 360;
-
     const img = this.img;
     // 交换图片宽高
     this.setSize(this.getHeight(), this.getWidth());
