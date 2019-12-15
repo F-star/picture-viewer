@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+    #stage {
+      position: relative;
+      margin-left: 20px;
+      margin-top: 20px;
+      border: 1px solid #333;
+      overflow: hidden;
+    }
+    #stage img {
+      position: absolute;
+    }
+    #action {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="action">
+    <button id="scale-up">放大</button>
+    <button id="scale-down">缩小</button>
+    <button id="rotate">顺时针</button>
+    <button id="anti-rotate">逆时针</button>
+  </div>
+
+  <script src="./index.js"></script>
+</body>
+</html>
