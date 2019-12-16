@@ -3,7 +3,6 @@ function Stage(seletor) {
   this.el = document.querySelector(seletor);
   this.picture = undefined;
 }
-
 Stage.prototype = {
   initImage(imgUrl, width, height) {
     this.picture = new Picture(imgUrl, width, height);
@@ -96,10 +95,26 @@ Stage.prototype = {
     });
   },
   scaleImg(scale) {
-    const box = this.picture.boxAfterScale(scale);
-    this.picture.setSize(box.width, box.height);
-    const {x, y} = this.fixImgPos(box);
-    this.picture.setPostion(x, y); 
+    const stage_width = this.width();
+    const stage_height = this.height();
+
+    this.picture.scaleInBox(
+      scale, {
+        stage_width, stage_height
+      }
+    )
+  },
+  scaleImgTo(scale) {
+    const stage_width = this.width();
+    const stage_height = this.height();
+
+    this.picture.scaleToInBox(
+      scale, {
+        stage_width, stage_height
+      }
+    )
+    console.log('当前图片缩放比：', this.picture.scale());
+    // this.picture.scaleTo(scale);
   },
   rotateImg(angle) {
     this.picture.rotate(angle);
@@ -122,14 +137,14 @@ Stage.prototype = {
       else if (box.x < min_x) new_x = min_x; // 缩放后，左侧有空白
       else new_x = box.x;
     } else {
-      new_x = (stage_width - box.width) / 2
+      new_x = (stage_width - box.width) / 2;
     }
     if (box.height > stage_height) {
       if (box.y > max_y) new_y = max_y;
       else if (box.y < min_y) new_y = min_y;
       else new_y = box.y;
     } else {
-      new_y = (stage_height - box.height) / 2
+      new_y = (stage_height - box.height) / 2;
     }
     return {
       x: new_x,
@@ -140,13 +155,16 @@ Stage.prototype = {
 
 // 图片对象 (canvas 实现)
 function Picture(imgUrl, width, height) {
+  this.el = undefined;
+  this.canvasCtx = undefined;
+  this.img = undefined;
+  this.loadedHandler = [];
+  this.angle = 0;
+
   const img = new Image();
   this.el = document.createElement('canvas');
   this.canvasCtx = this.el.getContext('2d');
   this.img = img;
-  this.loadedHandler = [];
-  this.angle = 0;
-
   img.src = imgUrl;
   img.onload = () => {
     console.log('图片加载完毕')
@@ -179,6 +197,20 @@ Picture.prototype = {
   getRatio() {
     return this.getWidth() / this.getHeight();
   },
+  originWidth(val) {
+    if (val == undefined) {
+      const width = this.el.width;
+      return width;
+    }
+    this.el.width = val;
+  },
+  originHeight(val) {
+    if (val == undefined) {
+      const height = this.el.height;
+      return height;
+    }
+    this.el.height = val;
+  },
   setSize(width, height) {
     this.el.style.width = width + 'px';
     this.el.style.height = height + 'px';
@@ -201,7 +233,54 @@ Picture.prototype = {
       x, y, width, height
     };
   },
+  // 根据给出图片 box 的范围和图片宽高和 stage 宽高，修正 x， y
+  fixPos(box, stage_width, stage_height) {
+    let new_x = box.x, 
+        new_y = box.y;
+    const min_x = stage_width - box.width,
+          max_x = 0,
+          min_y = stage_height - box.height,
+          max_y = 0;
+
+    if (box.width > stage_width) {
+      if (box.x > max_x) new_x = max_x; // 缩放后，右边有空白
+      else if (box.x < min_x) new_x = min_x; // 缩放后，左侧有空白
+      else new_x = box.x;
+    } else {
+      new_x = (stage_width - box.width) / 2
+    }
+    if (box.height > stage_height) {
+      if (box.y > max_y) new_y = max_y;
+      else if (box.y < min_y) new_y = min_y;
+      else new_y = box.y;
+    } else {
+      new_y = (stage_height - box.height) / 2
+    }
+    return {
+      x: new_x,
+      y: new_y
+    }
+  },
+  // 特殊的缩放，缩放后要求图片和stage无空隙，除非宽或高小于stage。
+  scaleInBox(scale, options) {
+    let { cx, cy, stage_width, stage_height } = options;
+
+    const box = this.boxAfterScale(scale); // 计算缩放后的盒子模型
+    this.setSize(box.width, box.height);  // 宽高直接修改
+    const {x, y} = this.fixPos(box, stage_width, stage_height); // 计算调整后的 x y。
+    this.setPostion(x, y);  // 设置 x y
+    this.setSize(box.width, box.height);
+  },
+  scaleToInBox(scale, option) {
+    const current_scale = this.scale();
+    const dscale = scale / current_scale;
+    this.scaleInBox(dscale, option);
+  },
+  // 普通的缩放。
   scale(scale, cx, cy) {
+    if (scale == undefined) {
+      return this.getWidth() / this.originWidth();
+    }
     if (cx == undefined) {
       cx = this.x() + this.getWidth() / 2;
       cy = this.y() + this.getHeight() / 2;
@@ -210,11 +289,16 @@ Picture.prototype = {
     width *= scale;
     let height = this.getHeight();
     height *= scale;
-    this.setSize(width, height);
-
     const new_x = cx - scale * (cx - this.x());
     const new_y = cy - scale * (cy - this.y());
+
+    this.setSize(width, height);
     this.setPostion(new_x, new_y);
+  },
+  scaleTo(scale, cx, cy) {
+    const current_scale = this.scale();
+    const dscale = scale / current_scale;
+    this.scale(dscale, cx, cy);
   },
   // 位置相关方法
   x(val) {
@@ -263,14 +347,18 @@ Picture.prototype = {
 
 const stage = new Stage('#stage');
 stage.size(700, 500);
-stage.initImage('./img/pic.jpg', 1280, 720)
+stage.initImage('./img/pic.jpg');
 stage.enableMove();
 
 document.querySelector('#scale-up').addEventListener('click', function() {
-  stage.scaleImg(1.2);
+  // stage.scaleImg(1.2);
+  const zoom = stage.picture.scale() + 0.1;
+  stage.scaleImgTo(zoom);
 })
 document.querySelector('#scale-down').addEventListener('click', function() {
-  stage.scaleImg(0.8);
+  // stage.scaleImg(0.8);
+  const zoom = stage.picture.scale() - 0.1;
+  stage.scaleImgTo(zoom);
 })
 document.querySelector('#rotate').addEventListener('click', function() {
   stage.rotateImg(90);
