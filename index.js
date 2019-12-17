@@ -2,15 +2,25 @@
 function Stage(seletor) {
   this.el = document.querySelector(seletor);
   this.picture = undefined;
+  this.picLoaded = false;
 }
 Stage.prototype = {
   initImage(imgUrl, width, height) {
+    this.picLoaded = false;
     this.picture = new Picture(imgUrl, width, height);
     this.picture.loaded(() => {
+      this.picLoaded = true;
+      // 删除原来的 canvas 元素
+      const canvas = this.el.querySelector('canvas');
+      canvas && canvas.remove();
+
       this.el.appendChild(this.picture.el);
       this.autofixPic()
     })
     
+  },
+  hasLoadPic() {
+    return this.picLoaded;
   },
   // 让图片刚好填充舞台
   autofixPic(box) {
@@ -25,16 +35,19 @@ Stage.prototype = {
     }
     console.log('图片自适应窗口')
     const imgRatio = this.picture.getRatio();
-
-    if (imgRatio > box.ratio) {
+    let scale;
+    // 特殊情况：图片为正方形
+    if (imgRatio == 1) {
+      if (box.width > box.height) scale = box.height / this.picture.getHeight();
+      else scale = box.width / this.picture.getWidth();
+    } else if (imgRatio > box.ratio) {
       // 图片高设置为 stage 高
-      const scale = box.width / this.picture.getWidth();
-      this.scaleImg(scale)
+      scale = box.width / this.picture.getWidth();
     } else {
       // 图片宽设置为 stage 宽。
-      const scale = box.height / this.picture.getHeight();
-      this.scaleImg(scale)
+      scale = box.height / this.picture.getHeight();
     }
+    this.scaleImg(scale)
   },
   width() {
     const width = parseFloat(this.el.style.width);
@@ -345,9 +358,11 @@ Picture.prototype = {
   },
 }
 
+const imgUrls = ['./img/pic.jpg', './img/square.jpg']
+
 const stage = new Stage('#stage');
 stage.size(700, 500);
-stage.initImage('./img/pic.jpg');
+stage.initImage(imgUrls[0]);
 stage.enableMove();
 
 document.querySelector('#scale-up').addEventListener('click', function() {
@@ -365,4 +380,14 @@ document.querySelector('#rotate').addEventListener('click', function() {
 })
 document.querySelector('#anti-rotate').addEventListener('click', function() {
   stage.rotateImg(-90);
+})
+
+let index = 0;
+document.querySelector('#switchPic').addEventListener('click', function() {
+  if (!stage.hasLoadPic()) {
+    return console.warning('当前图片加载中，无法切换')
+  }
+  index = (index + 1) % imgUrls.length;
+  const url = imgUrls[index];
+  stage.initImage(url);
 })
