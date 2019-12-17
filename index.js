@@ -34,19 +34,11 @@ Stage.prototype = {
       }
     }
     console.log('图片自适应窗口')
-    const imgRatio = this.picture.getRatio();
-    let scale;
-    // 特殊情况：图片为正方形
-    if (imgRatio == 1) {
-      if (box.width > box.height) scale = box.height / this.picture.getHeight();
-      else scale = box.width / this.picture.getWidth();
-    } else if (imgRatio > box.ratio) {
-      // 图片高设置为 stage 高
-      scale = box.width / this.picture.getWidth();
-    } else {
-      // 图片宽设置为 stage 宽。
-      scale = box.height / this.picture.getHeight();
-    }
+
+    let scale = box.width / this.picture.getWidth();
+    let height = this.picture.getHeight() * scale;
+    if (height > box.height) scale = box.height / this.picture.getHeight()
+
     this.scaleImg(scale)
   },
   width() {
