@@ -358,10 +358,10 @@ Picture.prototype = {
   },
 }
 
-const imgUrls = ['./img/pic.jpg', './img/square.jpg']
+const imgUrls = ['./img/pic.jpg', './img/square.jpg', 'https://image-cdn.xhvip100.com/test/5d9ea7cd519fb400011752fc.jpg']
 
 const stage = new Stage('#stage');
-stage.size(700, 500);
+stage.size(1030, 674);
 stage.initImage(imgUrls[0]);
 stage.enableMove();
 
